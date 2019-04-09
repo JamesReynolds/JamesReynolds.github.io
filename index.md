@@ -5,7 +5,7 @@ title: About me
 
 ## Tech
 
-I've worked with a whole heap of different technologies and enjoyed most of them. Recently its been Python/Ruby with Docker, AWS and Puppet, but its also been C++ with AIX and Solaris.
+I've worked with a whole heap of different technologies and enjoyed most of them. Recently it has been Python/Ruby with Docker, AWS and Puppet, but it has also been C++ with AIX and Solaris.
 
 My likes are unit tests, integration tests, static analysis and continuous integration.
 My dislikes are laborious unautomated procedures, hand-constructed pet servers (especially Windows or Solaris ones) and `WINDOWS_SHOUTING_TYPES`.
