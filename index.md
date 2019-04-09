@@ -14,7 +14,7 @@ Favourite programming language? Python or good C++. Least favourite language? Pe
 
 ## Life
 
-I've a 2<sup>nd</sup> degree black-belt in Tae-kwon-do and try my best to keep up my fitness. I also dabbled in a fair bit of mountain biking... but now the bike mostly ferries our two children to and from nursery! Fortunately, the more they grow the fitter I get - which is a bonus many parents don't get.
+I've a 2<sup>nd</sup> degree black-belt in Tae-kwon-do and try my best to keep up my fitness. I also dabbled in a fair bit of mountain biking... but now the bike mostly ferries our children to and from nursery! Fortunately, the more they grow the fitter I get - which is a bonus many parents don't get.
 
 Also, props to my loving wife Michaela for doing things like supporting me whilst writing up my PhD, acting as my sounding board, and not minding that our home backup solution is a subversion repository (it started before git).
 
