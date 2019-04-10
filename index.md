@@ -1,7 +1,9 @@
 ---
-layout: page
+layout: about
 title: About me
 ---
+
+![About](/assets/about.png){: width="760px"}
 
 ## Tech
 
