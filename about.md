@@ -8,6 +8,8 @@ permalink: /about/
 
 I've worked with a whole heap of different technologies and enjoyed most of them. Recently it has been Python/Ruby with Docker, AWS and Puppet, but it has also been C++ with AIX and Solaris.
 
+I've managed on-shore and off-shore teams ranging from 5 to 20 people covering the range of activities between development and operations including portions of e-commerce, marketing activities and community building.
+
 My likes are unit tests, integration tests, static analysis and continuous integration.
 My dislikes are laborious unautomated procedures, hand-constructed pet servers (especially Windows or Solaris ones) and `WINDOWS_SHOUTING_TYPES`.
 
@@ -19,9 +21,9 @@ I've a 2<sup>nd</sup> degree black-belt in Tae-kwon-do and try my best to keep u
 
 Also, props to my loving wife Michaela for doing things like supporting me whilst writing up my PhD, acting as my sounding board, and not minding that our home backup solution is a subversion repository (it started before git).
 
-## Recruiter?
+## Recruiting?
 
-| **Location:** Winchester, Hampshire, UK | [My CV](/assets/cv.pdf) | [My Tech CV](/assets/cv_tech.pdf) |
+| **Location:** Winchester, Hampshire, UK | [My CV](/assets/cv.pdf) | [My Tech Focused CV](/assets/cv_tech.pdf) |
 
 ### Skills matrix:
 
