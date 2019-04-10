@@ -1,8 +1,10 @@
 ---
-layout: page
+layout: about
 title: About me
 permalink: /about/
 ---
+
+![About](/assets/about.png){: width="760px"}
 
 ## Tech
 
