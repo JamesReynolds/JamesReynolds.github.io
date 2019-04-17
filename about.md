@@ -34,9 +34,9 @@ Also, props to my loving wife Michaela for doing things like supporting me whils
 |:---------------------|:--------------------------------------------------------------------------|
 | Agile Development and Continuous Delivery | Introduced and successfully used Agile and Continuous Delivery systems and methodologies including collection of metrics, blameless post-mortems and continuous improvement systems |
 |----------------------|---------------------------------------------------------------------------|
-| C++03 - C++14        | 15 years industrial experience: boost, cross-platform, concurrent systems |
+| C++03 - C++14        | 15 years industrial experience: boost, cross-platform, concurrent systems <br/> Open-source contributions to LLVM (Clang) and binutils/gcc |
 |----------------------|---------------------------------------------------------------------------|
-| Python 2 and 3       | 11 years industrial experience: matplotlib, doctest, numpy, scipy         |
+| Python 2 and 3       | 11 years industrial experience: matplotlib, doctest, numpy, scipy         <br/> Open-source contributions to numerous projects including gcovr |
 |----------------------|---------------------------------------------------------------------------|
 | JavaScript           | 3 years light industrial experience: AngularJS                            |
 |----------------------|---------------------------------------------------------------------------|
