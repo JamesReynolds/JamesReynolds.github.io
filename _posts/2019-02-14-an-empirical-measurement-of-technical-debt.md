@@ -43,13 +43,12 @@ that all of this comes out in the wash.
 
 ## Stats!
 
-<div class="wrapper">
-<img style="float:left; margin-top: -30px; margin-bottom: 10px;" src="/assets/loghist.svg" width="360px"/>
-<p>
 First thing to do is find out how long commits "usually" take. So we pulled out
 the commit logs from all of the repos and plotted the time between commits.
-</p><p>
-It turns out that you can fit a log-normal (...ish, its ln(x)<sup><small>2</small></sup>)
+<div class="wrapper">
+<img align="left" style="margin-top: -30px; margin-bottom: 10px;" src="/assets/loghist.svg" width="360px"/>
+<p style="width=100%">
+It&nbsp;turns out that you can fit a log-normal (...ish, its ln(x)<sup><small>2</small></sup>)
 curve to this, which means we can pull this into normal distribution and test some ideas.
 </p>
 <p>
@@ -83,18 +82,23 @@ def zscore(commits):
 ~~~
 {: .language-python}
 
-<div style="float: right; width: 360px; height: 240px; overflow: hidden">
-<img style="margin-top: -30px;  margin-bottom: 10px;" src="/assets/with_example.svg" width="360px"/>
-</div>
 Given these, we can sort to find the worst z-scores and plot these back on the normalised graph.
 
 This nicely shows that "CloudyStuff" usually takes a lot longer between commits, roughly 3-6 times 
 as long as it usually takes. So that gives us a measure against the normal for an individual file 
 _and_ a list of the worst offenders.
 
-In our specific case, `CloudStuff` didn't have a very good mock backend, so many changes to the
+<div style="float: right; width: 360px; height: 240px; overflow: hidden">
+<img style="margin-top: -30px;  margin-bottom: 10px;" src="/assets/with_example.svg" width="360px"/>
+</div>
+
+In&nbsp;our specific case, `CloudStuff` didn't have a very good mock backend, so many changes to the
 `CloudyStuff` require uploading and interacting with a cloudy thing. This is obviously going to be
 slower than a dev-test loop on a local machine, followed by a final test on the cloud.
+
+The other big offender was due to on-boarding a new piece of code which had end-to-end tests, but
+no integration tests or unit tests. In this case we made the loop require writing characterisation
+tests which necessarily slowed it down.
 
 ## Adding it all up
 
@@ -126,8 +130,8 @@ def debt(commits, deviation=1):
 
 We use `inverse` to apply the reverse of the log-normal transform so that we're looking at a percentage of "real" time:
 
-<div style="width: 100%; text-align: center; height: 430px; overflow: hidden;">
-<img style="margin-top: -30px;" src="/assets/debt.svg"/>
+<div style="width: 100%; text-align: center; height: 95%; overflow: hidden;">
+<img style="margin-top: -5%;" src="/assets/debt.svg"/>
 </div>
 
 Its a bit of a jumpy graph, but that is because we've not actively tried any measures (yet). There is a theory
