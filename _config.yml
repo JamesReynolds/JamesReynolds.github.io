@@ -25,6 +25,8 @@ header_pages:
   - projects.md
   - about.md
 
+google_analytics: UA-139075725-1
+
 # Build settings
 markdown: kramdown
 theme: minima
