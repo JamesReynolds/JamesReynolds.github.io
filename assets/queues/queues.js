@@ -83,7 +83,7 @@ function draw_diagram() {
       let elem = svg.selectAll("g stage").data(stage_data);
       let elemEnter = elem.enter().append("g").attr("transform", function(d) { return "translate(" + d.x + ", 130)"; });
       let circle = elemEnter.append("circle").attr("r", 40).attr('stroke', 'black').attr('fill', '#69a3b2')
-      let text = elemEnter.append("text").attrs({"dx" : -10, "dy" : 10}).text(function(d) { return d.label; }).style('font-size', '32px');
+      let text = elemEnter.append("text").attrs({"dx" : 0, "dy" : 10}).style("text-anchor", "middle").text(function(d) { return d.label; }).style('font-size', '32px');
     }
     
     // Counters
@@ -91,7 +91,7 @@ function draw_diagram() {
       let elem = svg.selectAll("g stage").data(counter_data);
       let elemEnter = elem.enter().append("g").attr("transform", function(d) { return "translate(" + d.x + ", " + d.y + ")"; });
       let circle = elemEnter.append("circle").attr("r", 30).attr('stroke', 'black').attr('fill', '#eea3b2')
-      let text = elemEnter.append("text").attrs({"dx" : -10, "dy" : 10}).text(function(d) { return d.count; }).style('font-size', '32px');
+      let text = elemEnter.append("text").attrs({"dx" : 0, "dy" : 10}).style("text-anchor", "middle").text(function(d) { return d.count; }).style('font-size', '32px');
     }
 }
 
