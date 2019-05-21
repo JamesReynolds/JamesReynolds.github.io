@@ -3,7 +3,7 @@ layout:     post
 title:      "Monitoring with counters"
 date:       2019-05-15 07:30:30 +0100
 categories: devops/monitoring
-published:  true
+published:  false
 ---
 
 <script type="text/javascript" src="https://d3js.org/d3.v4.min.js"></script>
@@ -13,336 +13,168 @@ published:  true
 div.chart {
   float:left;
   height: 250px;
+  display: block;
 }
-
 div.full {
   width: 100%;
 }
-
-div.half {
-  width: 50%;
+div.diagram {
+  border: 1px solid black;
+  display: block;
+  width: 100%;
 }
 </style>
 
-Text above
+Creating a Netdata monitor for a queueing system using a simple API that returns counts of events.
 
-<div id="circle" style="border: 1px solid black; display: block; width: 100%;"></div>
+## A simple packaging system
+
+Recently we've had a number of issues with Nexus' support of RPM repositories:
+
+* There is no progress report for generating metadata
+* The RPM is uploaded/deleted prior to metadata generation - so the repository is often inconsistent to its metadata
+* Broken RPMs can stall the metadata process until they are removed
+* Metadata generation is inconsistent
+* Metadata generation is slow
+
+In Nexus' defence we are building a lot of RPMs so the read/write ratio is very
+different to more common use cases. Additionally, all of these problems are in
+fact bugged and so will perhaps be solved in time.
+
+However, these problems stem from Nexus using a reimplementation of the RPM createrepo
+tools and that Nexus does not have a staging area. So we looked at implementing a 
+component store that:
+
+* Used a staging area to ensure clean updates
+* Use the native packaging tools (`createrepo`, `pep381run`...)
+* Can be monitored easily
+
+### Our solution
+
+* Docker containers to separate services and allow minimal "plugins" (for `createrepo` and friends)
+* Monitoring via NetData
+* File serving using NGINX
+* Messaging using RabbitMQ
+
+This creates a system with the following components: 
+
+<div id="circle" class="diagram"></div>
+<p/>
+
+* **U**pload watcher - watches the NGINX upload folder for new RPMs
+* **S**tager - swaps between two staging areas, so download section is always consistent
+* **P**lugin - runs the `createrepo` tool
+
+## Keeping things stateless with counters
+
+We needed to measure the amount of time the `createrepo` tool is taking to construct
+the metadata and the amount of time RPMs sit in the upload queue. However... currently
+(aside from the filestore) the containers store no state, and we very much like it this way!
+
+The solution we arrived at is to keep track of the arrival rates of RPMs into the queues:
+<table>
+  <tr><th>Counter</th><th>Value</th></tr>
+  <tr><td>Uploaded</td><td id="upload_counter">0</td></tr>
+  <tr><td>Staged</td><td id="staged_counter">0</td></tr>
+  <tr><td>Plugin</td><td id="plugin_counter">0</td></tr>
+  <tr><td>Processed</td><td id="processed_counter">0</td></tr>
+  <tr><td>Complete</td><td id="complete_counter">0</td></tr>
+</table>
+
+This is done by creating a new queue called `events` that receives messages from any
+of the stages when they change state. A simple service then keeps a count of all of
+these events and is the *only* extra state in the system - and all in one place!
+
+Queue lengths are simply the difference between these counters, so we can chart
+that over time:
 <div id="chart1_div" class="chart full"></div>
+
+In our system this is output through a Netdata dashboard, but this blog is using GoogleChart
+for examples.
+
+## What can we calculate?
+
+The next thing to calculate is the rate at which items are entering each queue. Netdata
+has a rather handy `incremental` graph style, so we can do this with no modifications. In
+this example though we have to keep the previous state of the counters so we can find the
+change per second:
+
 <div id="chart2_div" class="chart full"></div>
+
+OK, easy enough - but what about serving time?
+
+## Little's theorem
+
+The time taken to serve a request is given by Little's theorem. There are a host of examples
+of this to be found - but the long and the short of the thing is this simple formula:
+
+```
+L = λ W   or   Length = Arrival Rate * Work time
+```
+
+The problem is that these values are _average_ values over a window of time. If we just take
+the last two values we get a graph with _really_ extreme values. No good to anyone:
+
 <div id="chart3_div" class="chart full"></div>
-   
-<script>
 
-// create svg element:
-var svg = d3.select("#circle").append("svg").attr('viewBox', '0 0 900 240')
+### Exponential Smoothing
 
-// Add the path using this helper function
+Exponential smoothing is a technique to calculate a moving average for a dataset without the
+need to store multiple values. It has the advantage of being _really_ simple:
 
-stage_data = [{"x": 160, "label": "U"}, {"x": 480, "label": "S"}, {"x": 800, "label": "P"}]
-queue_data = [{"x": 240, "y": 110}, {"x": 560, "y": 40}, {"x": 560, "y": 180}]
-arrow_data = [
-  [40, 130, 120, 130],
-  [200, 130, 240, 130],
-  [400, 130, 440, 130],
-  [480 + 28.3, 130 - 28.3, 560, 60],
-  [720, 60, 800 - 28.3, 130 - 28.3],
-  [800 - 28.3, 130 + 28.3, 720, 200],
-  [560, 200, 480 + 28.3, 130 + 28.3],
-  [480, 170, 480, 230]
-];
-counter_data = [
-  {"name" : "upload", "x": 380, "y": 130, "count": 0},
-  {"name" : "staged", "x": 700, "y": 60, "count": 0},
-  {"name" : "plugin", "x": 850, "y": 130, "count": 0},
-  {"name" : "processed", "x": 700, "y": 200, "count": 0},
-];
-transition_source = [
-];
-inout_data = [
-  {"name" : "user", "x" : 0, "y": 130},
-  {"name" : "done", "x" : 480, "y" : 130}
-];
+```
+sᵢ = α xᵢ + (1 - α) xᵢ₋₁
+```
 
-function draw_diagram() {
-    // Queues
-    {
-      let elem = svg.selectAll("g queue").data(queue_data);
-      let elemEnter = elem.enter().append("g").attr("transform", function(d) { return "translate(" + d.x + ", " + d.y + ")"; });
-      let rectangle = elemEnter.append("rect").attrs({"width" : 160, "height" : 40, "fill" : '#69a3b2', 'stroke': 'black'});
-      for(let i = 0 ; i < 160 ; i += 20) {
-        elemEnter.append("line").attrs(function (x) { return {"x1": i, "x2": i, "y1": 0, "y2": 40, "stroke": 'black'}; });
-      }
-    }
-    
-    // Arrows
-    {
-      svg.append("svg:defs").append("svg:marker")
-        .attr("id", "triangle")
-        .attr("refX", 10)
-        .attr("refY", 5)
-        .attr("markerWidth", 10)
-        .attr("markerHeight", 10)
-        .attr("orient", "auto")
-        .append("path")
-        .attr("d", "M0,0 L0,10 L10,5 z");
-    
-      let elem = svg.selectAll("g arrow").data(arrow_data).enter().append("line").attrs(function (d) {
-        return {"x1": d[0], "y1": d[1], "x2": d[2], "y2": d[3], "stroke-width": 2, "stroke": "black", "marker-end": "url(#triangle)"};
-      });
-    }
-    
-    // Transitions
-    {
-      transitions = []
-      transition_source.forEach(function (t) {
-        transition = {}
-        inout_data.concat(counter_data).forEach(function (c) {
-          if (c['name'] == t[0]) {
-            transition['x1'] = c['x'];
-            transition['y1'] = c['y'];
-          }
-          if (c['name'] == t[1]) {
-            transition['x2'] = c['x'];
-            transition['y2'] = c['y'];
-          }
-        });
-        transitions.push(transition);
-      });
-      let elem = svg.selectAll("g transitions").data(transitions).enter();
-      let circle = elem.append("circle").attr("r", 30).attr('stroke', 'black').attr('fill', '#eea3b2').attrs(function (d) { return {'cx' : d.x1, 'cy' : d.y1};})
-      let next = circle.style('opacity', 0.8).transition().duration(900).attrs(function (d) { return {'cx' : d.x2, 'cy' : d.y2};})
-    }
+There is a fair bit of hand waving to be done to get a good value for `α` but a reasonable
+rule of thumb we've found is that `1 / T` where `T` is the amount of time under consideration
+is reasonable. So we're using `1 / 60` - meaning that after a minute we should be at 63% of
+the "real" signal.
 
-    // Stages
-    {
-      let elem = svg.selectAll("g stage").data(stage_data);
-      let elemEnter = elem.enter().append("g").attr("transform", function(d) { return "translate(" + d.x + ", 130)"; });
-      let circle = elemEnter.append("circle").attr("r", 40).attr('stroke', 'black').attr('fill', '#69a3b2')
-      let text = elemEnter.append("text").attrs({"dx" : -10, "dy" : 10}).text(function(d) { return d.label; }).style('font-size', '32px');
-    }
-    
-    // Counters
-    {
-      let elem = svg.selectAll("g stage").data(counter_data);
-      let elemEnter = elem.enter().append("g").attr("transform", function(d) { return "translate(" + d.x + ", " + d.y + ")"; });
-      let circle = elemEnter.append("circle").attr("r", 30).attr('stroke', 'black').attr('fill', '#eea3b2')
-      let text = elemEnter.append("text").attrs({"dx" : -10, "dy" : 10}).text(function(d) { return d.count; }).style('font-size', '32px');
-    }
-}
+The _really_ nice part here though is we're using _two_ smoothed values to calculate a result,
+so the smoothing cancels out in the first order term.
 
-draw_diagram();
-    
-    google.charts.load('current', {'packages':['corechart']});
-    google.charts.setOnLoadCallback(drawChart);
- 
-      function drawChart() {
-            
-        // define all the charts you need
-          var mycharts = [
-            {
-              div: 'chart1_div',
-              chart: 'queues.length',
-              type: 'stacked',
-              options: { // these are google chart options
-                title: 'Queue lengths',
-                vAxis: {minValue: 5}
-              }
-            },
-            {
-              div: 'chart2_div',
-              chart: 'queues.rates',
-              type: 'line',
-              options: { // these are google chart options
-                title: 'Queue rates',
-                curveType: 'function',
-                vAxis: {minValue: 5, viewWindow: {min : 0}}
-              }
-            },
-            {
-              div: 'chart3_div',
-              chart: 'queues.times',
-              type: 'line',
-              options: { // these are google chart options
-                title: 'Queue service time',
-                curveType: 'function',
-                vAxis: {minValue: 5, viewWindow: {min : 0}}
-              }
-            }
-          ];
+<div id="chart4_div" class="chart full"></div>
 
+## Putting this into netdata
 
-stages = ["upload", "staged", "plugin", "processed", "complete"];
-queues = stages.reduce((obj, x) => { obj[x] = 0; return obj; }, {});
-counters = stages.reduce((obj, x) => { obj[x] = 0; return obj; }, {});
+This example is available on [github](https://github.com/JamesReynolds/queues). A new chart
+is added by simply pushing the files to the correct places in netdata installation and
+ensuring netdata has access:
 
-function advance(queues, counters) {
-  transition_source = []
+```
+FROM netdata/netdata
 
-  // Items in staging /always/ move to plugin straight away
-  queues["plugin"] += queues["staged"];
-  counters["plugin"] += queues["staged"];
-  if (queues["staged"] > 0) transition_source.push(["staged", "plugin"])
-  queues["staged"] = 0;
+## Add information to netdata
+COPY queue.chart.py /usr/libexec/netdata/python.d/
+COPY queue.conf /usr/lib/netdata/conf.d/python.d/
 
-  // If we're not staging anything, then stage some things
-  if (queues["staged"] + queues["plugin"] + queues["processed"] == 0) {
-    take = Math.min(5, queues["upload"]);
-    if (take > 0) transition_source.push(["upload", "staged"])
-    queues["staged"] += take;
-    counters["staged"] += take;
-    queues["upload"] -= take;
-  }
+## Ensure that ownership and python modules are present
+RUN chown root:netdata \
+        /usr/lib/netdata/conf.d/python.d/queue.conf \
+        /usr/libexec/netdata/python.d/queue.chart.py \
+        /usr/libexec/netdata/plugins.d/python.d.plugin
+```
 
-  // If we've finished processing things, then we can output them
-  counters["complete"] += queues["processed"]
-  if (queues["processed"] > 0) transition_source.push(["processed", "done"])
-  queues["processed"] = 0;
+...and _that_ is it:
 
-  // It takes a certain amount of time to process all items
-  if (queues["plugin"] > 0 && Math.random() < 1 / (1 + queues["plugin"])) {
-    queues["processed"] += queues["plugin"];
-    counters["processed"] += queues["plugin"];
-    queues["plugin"] = 0;
-    transition_source.push(["plugin", "processed"])
-  }
+<img src="/assets/queues/queues.png"/>
 
-  // New arrivals
-  input = Math.floor(Math.random() * 2);
-  queues["upload"] += input;
-  counters["upload"] += input;
-  if (input > 0) transition_source.push(["user", "upload"])
+### Troubleshooting
 
+Netdata, as much as I enjoy using it, does have a tedency to not show graphs for a variety
+of reasons and leave you wondering why you can't see them.
 
-  for(let i = 0 ; i < counter_data.length ; ++i) {
-    for(var key in queues) {
-      if (counter_data[i]['name'] == key) {
-        counter_data[i]['count'] = queues[key];
-      }
-    }
-  }
-}
+1. Service timeout
+   Use `autodetection_retry: 60` (retry after one minute) and/or
+   `timeout: 60` (wait this long for the URL to come back)
+2. Zero values
+   If you can, make sure incremental values are not zero, even by chance. Netdata seems
+   to take this as an error condition.
 
-function addSeconds(date, value) {
-  let result = new Date(date);
-  result.setSeconds(result.getSeconds() + value);
-  return result;
-}
+## This Javascript code
 
-function cut(data) {
-  if (data.length < 60) {
-    let oldest = new Date();
-    if (data.length > 1) oldest = Date(data[1]["c"][0]["v"]);
-    let items = Array.from(Array(60 - data.length + 1).keys()).map(x => 
-      fromArray(addSeconds(oldest, 0 - 60 + x),
-        data[0].map(x => 0).splice(0, data[0].length - 3)));
-    data.splice.apply(data, [1, 0].concat(items));
-  }
-  data.splice(1, 1);
-  return new Date();
-}
+<a href="/assets/queues/queues.js">The Javascript code</a> for this page is not minified so you
+can browse how the graphs are put together.
 
-function fromArray(date, data) {
-  let result = Array.concat([date, null, null], data);
-  return {"c": result.map(x => {return {"v": x};})};
-}
-
-function toArray(data) {
-  let result = data["c"].map(x => x["v"]);
-  result.splice(0, 3);
-  return result;
-}
-
-function bump_lengths(data) {
-  let date = cut(data);
-  data.push(fromArray(date, Object.values(queues).splice(0, stages.length - 1)));
-  return data;
-}
-
-function bump_counters(data) {
-  let date = cut(data);
-  data.push(fromArray(date, Object.values(counters)));
-}
-
-function bump_rates(data, counters) {
-  let date = cut(data);
-  let end = counters.length;
-  if (end > 2) {
-    let array = [counters[end - 2], counters[end - 1]].map(toArray);
-    data.push(fromArray(date, Array.from(Array(array[0].length).keys()).map(x => array[1][x] - array[0][x])));
-  } else {
-    data.push(fromArray(date, stages.map(s => 0)));
-  }
-}
-
-function labels() {
-  return Array.concat([{"label":"time","type":"datetime"},
-          {"label":"","type":"string","p":{"role":"annotation"}},
-          {"label":"","type":"string","p":{"role":"annotationText"}}],
-         stages.map(x => {return {"label": x, "type": "number"};}));
-}
-
-function update_average(data, raw_data, alpha) {
-  let date = cut(data);
-  let last = stages.map(x => 0);
-  let array = toArray(raw_data[raw_data.length - 1]);
-  if (data.length >= 2) {
-    last = toArray(data[data.length - 1]);
-  }
-  data.push(fromArray(date, Array.from(Array(array.length).keys()).map(x => last[x] * (1 - alpha) + array[x])));
-  return data;
-}
-
-function bump_times(data, average_rates, average_lengths) {
-  let date = cut(data);
-  let rates = toArray(average_rates[average_rates.length - 1]);
-  let lengths = toArray(average_lengths[average_lengths.length - 1]);
-  data.push(fromArray(date, rates.map(function (x, i) { return lengths[i] / x; })));
-}
-
-function refreshCharts() {
-  advance(queues, counters);
-  bump_lengths(length_data);
-  bump_counters(counters_data);
-  bump_rates(rates_data, counters_data);
-  update_average(average_rates_data, rates_data, 2.0 / 301);
-  update_average(average_length_data, length_data, 2.0 / 301);
-  bump_times(times_data, average_rates_data, average_length_data);
-  mycharts[0].gchart.draw(google.visualization.arrayToDataTable(length_data), mycharts[0].options);
-  mycharts[1].gchart.draw(google.visualization.arrayToDataTable(rates_data), mycharts[1].options);
-  mycharts[2].gchart.draw(google.visualization.arrayToDataTable(times_data), mycharts[2].options);
-  draw_diagram();
-}
-
-
-length_data = [labels().splice(0, stages.length + 2)];
-counters_data = [labels()];
-rates_data = [labels()];
-
-average_rates_data = [labels()];
-average_length_data = [labels()];
-
-times_data = [labels()];
-
-        // initialize the google charts
-        var len = mycharts.length;
-        while(len--) {
-          
-          switch(mycharts[len].type) {
-            case 'stacked':
-              mycharts[len].options.isStacked = 'absolute';
-              // no break here - render it as area chart
-            case 'area':
-              mycharts[len].gchart = new google.visualization.AreaChart(document.getElementById(mycharts[len].div));
-              break;
-            default:
-              mycharts[len].gchart = new google.visualization.LineChart(document.getElementById(mycharts[len].div));
-              break;
-          }
-        }
-        
-        setInterval(function() {
-          refreshCharts();
-        }, 1000);
-      }
-</script>
-Text below
+<script type="text/javascript" src="/assets/queues/queues.js"></script>
