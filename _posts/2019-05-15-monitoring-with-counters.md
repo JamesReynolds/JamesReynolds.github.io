@@ -2,8 +2,8 @@
 layout:     post
 title:      "Monitoring with counters"
 date:       2019-05-15 07:30:30 +0100
-categories: devops
-published:  false
+categories: devops/monitoring
+published:  true
 ---
 
 <script type="text/javascript" src="https://d3js.org/d3.v4.min.js"></script>
@@ -50,50 +50,93 @@ arrow_data = [
   [560, 200, 480 + 28.3, 130 + 28.3],
   [480, 170, 480, 230]
 ];
+counter_data = [
+  {"name" : "upload", "x": 380, "y": 130, "count": 0},
+  {"name" : "staged", "x": 700, "y": 60, "count": 0},
+  {"name" : "plugin", "x": 850, "y": 130, "count": 0},
+  {"name" : "processed", "x": 700, "y": 200, "count": 0},
+];
+transition_source = [
+];
+inout_data = [
+  {"name" : "user", "x" : 0, "y": 130},
+  {"name" : "done", "x" : 480, "y" : 130}
+];
 
-// Stages
-{
-  let elem = svg.selectAll("g stage").data(stage_data);
-  let elemEnter = elem.enter().append("g").attr("transform", function(d) { return "translate(" + d.x + ", 130)"; });
-  let circle = elemEnter.append("circle").attr("r", 40).attr('stroke', 'black').attr('fill', '#69a3b2')
-  let text = elemEnter.append("text").attrs({"dx" : -10, "dy" : 10}).text(function(d) { return d.label; }).style('font-size', '32px');
+function draw_diagram() {
+    // Queues
+    {
+      let elem = svg.selectAll("g queue").data(queue_data);
+      let elemEnter = elem.enter().append("g").attr("transform", function(d) { return "translate(" + d.x + ", " + d.y + ")"; });
+      let rectangle = elemEnter.append("rect").attrs({"width" : 160, "height" : 40, "fill" : '#69a3b2', 'stroke': 'black'});
+      for(let i = 0 ; i < 160 ; i += 20) {
+        elemEnter.append("line").attrs(function (x) { return {"x1": i, "x2": i, "y1": 0, "y2": 40, "stroke": 'black'}; });
+      }
+    }
+    
+    // Arrows
+    {
+      svg.append("svg:defs").append("svg:marker")
+        .attr("id", "triangle")
+        .attr("refX", 10)
+        .attr("refY", 5)
+        .attr("markerWidth", 10)
+        .attr("markerHeight", 10)
+        .attr("orient", "auto")
+        .append("path")
+        .attr("d", "M0,0 L0,10 L10,5 z");
+    
+      let elem = svg.selectAll("g arrow").data(arrow_data).enter().append("line").attrs(function (d) {
+        return {"x1": d[0], "y1": d[1], "x2": d[2], "y2": d[3], "stroke-width": 2, "stroke": "black", "marker-end": "url(#triangle)"};
+      });
+    }
+    
+    // Transitions
+    {
+      transitions = []
+      transition_source.forEach(function (t) {
+        transition = {}
+        inout_data.concat(counter_data).forEach(function (c) {
+          if (c['name'] == t[0]) {
+            transition['x1'] = c['x'];
+            transition['y1'] = c['y'];
+          }
+          if (c['name'] == t[1]) {
+            transition['x2'] = c['x'];
+            transition['y2'] = c['y'];
+          }
+        });
+        transitions.push(transition);
+      });
+      let elem = svg.selectAll("g transitions").data(transitions).enter();
+      let circle = elem.append("circle").attr("r", 30).attr('stroke', 'black').attr('fill', '#eea3b2').attrs(function (d) { return {'cx' : d.x1, 'cy' : d.y1};})
+      let next = circle.style('opacity', 0.8).transition().duration(900).attrs(function (d) { return {'cx' : d.x2, 'cy' : d.y2};})
+    }
+
+    // Stages
+    {
+      let elem = svg.selectAll("g stage").data(stage_data);
+      let elemEnter = elem.enter().append("g").attr("transform", function(d) { return "translate(" + d.x + ", 130)"; });
+      let circle = elemEnter.append("circle").attr("r", 40).attr('stroke', 'black').attr('fill', '#69a3b2')
+      let text = elemEnter.append("text").attrs({"dx" : -10, "dy" : 10}).text(function(d) { return d.label; }).style('font-size', '32px');
+    }
+    
+    // Counters
+    {
+      let elem = svg.selectAll("g stage").data(counter_data);
+      let elemEnter = elem.enter().append("g").attr("transform", function(d) { return "translate(" + d.x + ", " + d.y + ")"; });
+      let circle = elemEnter.append("circle").attr("r", 30).attr('stroke', 'black').attr('fill', '#eea3b2')
+      let text = elemEnter.append("text").attrs({"dx" : -10, "dy" : 10}).text(function(d) { return d.count; }).style('font-size', '32px');
+    }
 }
 
-// Queues
-{
-  let elem = svg.selectAll("g queue").data(queue_data);
-  let elemEnter = elem.enter().append("g").attr("transform", function(d) { return "translate(" + d.x + ", " + d.y + ")"; });
-  let rectangle = elemEnter.append("rect").attrs({"width" : 160, "height" : 40, "fill" : '#69a3b2', 'stroke': 'black'});
-  for(let i = 0 ; i < 160 ; i += 20) {
-    elemEnter.append("line").attrs(function (x) { return {"x1": i, "x2": i, "y1": 0, "y2": 40, "stroke": 'black'}; });
-  }
-}
-
-// Arrows
-{
-  svg.append("svg:defs").append("svg:marker")
-    .attr("id", "triangle")
-    .attr("refX", 10)
-    .attr("refY", 5)
-    .attr("markerWidth", 10)
-    .attr("markerHeight", 10)
-    .attr("orient", "auto")
-    .append("path")
-    .attr("d", "M0,0 L0,10 L10,5 z");
-
-  let elem = svg.selectAll("g arrow").data(arrow_data).enter().append("line").attrs(function (d) {
-    return {"x1": d[0], "y1": d[1], "x2": d[2], "y2": d[3], "stroke-width": 2, "stroke": "black", "marker-end": "url(#triangle)"};
-  });
-}
-
-</script>
-
-<script>
-      google.charts.load('current', {'packages':['corechart']});
-      google.charts.setOnLoadCallback(drawChart);
-
+draw_diagram();
+    
+    google.charts.load('current', {'packages':['corechart']});
+    google.charts.setOnLoadCallback(drawChart);
+ 
       function drawChart() {
-        
+            
         // define all the charts you need
           var mycharts = [
             {
@@ -133,19 +176,18 @@ queues = stages.reduce((obj, x) => { obj[x] = 0; return obj; }, {});
 counters = stages.reduce((obj, x) => { obj[x] = 0; return obj; }, {});
 
 function advance(queues, counters) {
-  // New arrivals
-  input = Math.floor(Math.random() * 2);
-  queues["upload"] += input;
-  counters["upload"] += input;
+  transition_source = []
 
   // Items in staging /always/ move to plugin straight away
   queues["plugin"] += queues["staged"];
   counters["plugin"] += queues["staged"];
+  if (queues["staged"] > 0) transition_source.push(["staged", "plugin"])
   queues["staged"] = 0;
 
   // If we're not staging anything, then stage some things
   if (queues["staged"] + queues["plugin"] + queues["processed"] == 0) {
     take = Math.min(5, queues["upload"]);
+    if (take > 0) transition_source.push(["upload", "staged"])
     queues["staged"] += take;
     counters["staged"] += take;
     queues["upload"] -= take;
@@ -153,6 +195,7 @@ function advance(queues, counters) {
 
   // If we've finished processing things, then we can output them
   counters["complete"] += queues["processed"]
+  if (queues["processed"] > 0) transition_source.push(["processed", "done"])
   queues["processed"] = 0;
 
   // It takes a certain amount of time to process all items
@@ -160,6 +203,22 @@ function advance(queues, counters) {
     queues["processed"] += queues["plugin"];
     counters["processed"] += queues["plugin"];
     queues["plugin"] = 0;
+    transition_source.push(["plugin", "processed"])
+  }
+
+  // New arrivals
+  input = Math.floor(Math.random() * 2);
+  queues["upload"] += input;
+  counters["upload"] += input;
+  if (input > 0) transition_source.push(["user", "upload"])
+
+
+  for(let i = 0 ; i < counter_data.length ; ++i) {
+    for(var key in queues) {
+      if (counter_data[i]['name'] == key) {
+        counter_data[i]['count'] = queues[key];
+      }
+    }
   }
 }
 
@@ -174,7 +233,7 @@ function cut(data) {
     let oldest = new Date();
     if (data.length > 1) oldest = Date(data[1]["c"][0]["v"]);
     let items = Array.from(Array(60 - data.length + 1).keys()).map(x => 
-      fromArray(addSeconds(oldest, 0 - 30 + x / 2),
+      fromArray(addSeconds(oldest, 0 - 60 + x),
         data[0].map(x => 0).splice(0, data[0].length - 3)));
     data.splice.apply(data, [1, 0].concat(items));
   }
@@ -251,6 +310,7 @@ function refreshCharts() {
   mycharts[0].gchart.draw(google.visualization.arrayToDataTable(length_data), mycharts[0].options);
   mycharts[1].gchart.draw(google.visualization.arrayToDataTable(rates_data), mycharts[1].options);
   mycharts[2].gchart.draw(google.visualization.arrayToDataTable(times_data), mycharts[2].options);
+  draw_diagram();
 }
 
 
@@ -282,7 +342,7 @@ times_data = [labels()];
         
         setInterval(function() {
           refreshCharts();
-        }, 500);
+        }, 1000);
       }
 </script>
 Text below
