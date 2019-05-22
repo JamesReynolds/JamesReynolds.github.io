@@ -6,7 +6,7 @@ categories: linux windows
 published:  true
 ---
 
-## What can go wrong, does go wrong.
+## What can go wrong does go wrong.
 
 Our initial CI pipeline looked very much like this:
 

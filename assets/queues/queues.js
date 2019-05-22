@@ -269,7 +269,8 @@ function cut (data) {
  * Convert a simple array of values to an array for google chart
  */
 function fromArray (date, data) {
-  let result = Array.concat([date, null, null], data);
+  let result = [date, null, null];
+  result = result.concat(data);
   return { 'c': result.map(x => { return { 'v': x }; }) };
 }
 
@@ -309,11 +310,12 @@ function bumpRates (data, counters) {
 
 // Create labels for a new graph
 function labels () {
-  return Array.concat([
+  let result = [
     { 'label': 'time', 'type': 'datetime' },
     { 'label': '', 'type': 'string', 'p': { 'role': 'annotation' } },
-    { 'label': '', 'type': 'string', 'p': { 'role': 'annotationText' } }],
-  stages.map(x => { return { 'label': x, 'type': 'number' }; }));
+    { 'label': '', 'type': 'string', 'p': { 'role': 'annotationText' } }];
+  result = result.concat(stages.map(x => { return { 'label': x, 'type': 'number' }; }));
+  return result;
 }
 
 /*!
