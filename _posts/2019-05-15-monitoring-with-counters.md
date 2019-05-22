@@ -3,7 +3,7 @@ layout:     post
 title:      "Monitoring with counters"
 date:       2019-05-15 07:30:30 +0100
 categories: devops/monitoring
-published:  false
+published:  true
 ---
 
 <script type="text/javascript" src="https://d3js.org/d3.v4.min.js"></script>
@@ -26,6 +26,9 @@ div.diagram {
 </style>
 
 Creating a Netdata monitor for a queueing system using a simple API that returns counts of events.
+
+* Javascript for this page is [here]("/assets/queues/queues.js").
+* A github repo for the netdata code is [here](https://github.com/JamesReynolds/queues).
 
 ## A simple packaging system
 
@@ -174,7 +177,7 @@ of reasons and leave you wondering why you can't see them.
 
 ## This Javascript code
 
-<a href="/assets/queues/queues.js">The Javascript code</a> for this page is not minified so you
+[The Javascript code](/assets/queues/queues.js) for this page is not minified so you
 can browse how the graphs are put together.
 
 <script type="text/javascript" src="/assets/queues/queues.js"></script>
