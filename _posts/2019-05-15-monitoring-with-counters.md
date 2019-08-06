@@ -2,7 +2,7 @@
 layout:     post
 title:      "Monitoring with counters"
 date:       2019-05-15 07:30:30 +0100
-categories: devops/monitoring
+categories: devops monitoring
 published:  true
 ---
 
