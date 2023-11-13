@@ -42,7 +42,8 @@ new EventSource('/esbuild').addEventListener('change', () => location.reload());
   function capitalizeFirstLetterOnly(str) {
     return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
   }
-  function fillData(image) {
+  var image = [];
+  function fillData() {
     const save = document.querySelector("#save");
     const encoded = image.map(({ colour, pixels }) => `${colour}=${encode(pixels)}`);
     save.href = "?" + encoded.join("&");
@@ -56,7 +57,7 @@ new EventSource('/esbuild').addEventListener('change', () => location.reload());
 ${text}`).join("\n\n");
     }
   }
-  function buildTable(image) {
+  function buildTable() {
     var _a;
     const count = image[0].pixels.length;
     const table = document.createElement("table");
@@ -90,13 +91,13 @@ ${text}`).join("\n\n");
               image[index + 1].pixels[i - 1][j] = true;
             }
             td.style.backgroundColor = ((_a2 = image[index + 1]) === null || _a2 === void 0 ? void 0 : _a2.colour) || "white";
-            fillData(image);
+            fillData();
           };
         }
       }
       table.appendChild(tr2);
     }
-    fillData(image);
+    fillData();
     return table;
   }
   function htmlToElement(html) {
@@ -106,7 +107,7 @@ ${text}`).join("\n\n");
     const child = template.content.firstChild;
     return child;
   }
-  function drawColourControls(colours, image) {
+  function drawColourControls(colours) {
     const colourControls = document.querySelector("#colour_controls");
     colourControls.innerHTML = "";
     for (const { colour } of image) {
@@ -130,8 +131,8 @@ ${text}`).join("\n\n");
               image[0].pixels[i][j] = true;
             }
           }));
-          drawColourControls(colours, image);
-          drawImage(image);
+          drawColourControls(colours);
+          drawImage();
         }
       };
     });
@@ -146,33 +147,41 @@ ${text}`).join("\n\n");
       const colour = selector.value;
       const size = image[0].pixels.length;
       image.push({ colour, pixels: Array(size).fill([]).map(() => Array(size).fill(false)) });
-      drawImage(image);
-      drawColourControls(colours, image);
+      drawImage();
+      drawColourControls(colours);
     };
   }
-  function drawImage(image) {
+  function drawImage() {
     const tablespace = document.querySelector("#tablespace");
     tablespace.innerHTML = "";
-    tablespace.appendChild(buildTable(image));
+    tablespace.appendChild(buildTable());
   }
   async function main() {
-    let image = [];
     const colours = ["black", "red", "blue", "green", "yellow", "orange", "purple", "brown"];
     const query = window.location.search.slice(1).split("&").map((x) => [...x.split("="), ""].slice(0, 2)).filter(([x]) => x);
+    image.length = 0;
     if (query.length > 0) {
-      image = query.map(([colour, data]) => ({ colour, pixels: decode(base64urlDecode(data)) }));
+      for (const [colour, data] of query) {
+        image.push({ colour, pixels: decode(base64urlDecode(data)) });
+      }
     } else {
       const size = 10;
-      image = colours.slice(4).map((colour) => ({ colour, pixels: Array(size).fill([]).map(() => Array(size).fill(false)) }));
+      for (const colour of colours.slice(4)) {
+        image.push({ colour, pixels: Array(size).fill([]).map(() => Array(size).fill(false)) });
+      }
     }
-    drawColourControls(colours, image);
-    drawImage(image);
+    drawColourControls(colours);
+    drawImage();
     const button = document.querySelector("#make");
     button.onclick = () => {
       const countinput = document.querySelector("#count");
       const size = parseInt(countinput.value);
-      image = image.map(({ colour }) => ({ colour, pixels: Array(size).fill([]).map(() => Array(size).fill(false)) }));
-      drawImage(image);
+      const colours2 = image.map(({ colour }) => colour);
+      image.length = 0;
+      for (const colour of colours2) {
+        image.push({ colour, pixels: Array(size).fill([]).map(() => Array(size).fill(false)) });
+      }
+      drawImage();
     };
   }
   (() => main())();
