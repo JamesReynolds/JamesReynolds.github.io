@@ -39,17 +39,26 @@ new EventSource('/esbuild').addEventListener('change', () => location.reload());
     });
     return base64urlEncode(String.fromCharCode(...buffer));
   }
-  function fillData(pixels) {
-    const pre = document.querySelector("#dataspace pre");
-    const transposed = transpose(pixels);
-    pre.textContent = transposed.map((ys, y) => ys.map((v, x) => v ? `(${x},${y})` : "").filter((v) => v).join(" ")).filter((v) => v).join("\n");
-    const save = document.querySelector("#save");
-    const encoded = encode(pixels);
-    save.href = `?black=${encoded}`;
-    save.textContent = encoded;
+  function capitalizeFirstLetterOnly(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
   }
-  function buildTable(pixels) {
-    const count = pixels.length;
+  function fillData(image) {
+    const save = document.querySelector("#save");
+    const encoded = image.map(({ colour, pixels }) => `${colour}=${encode(pixels)}`);
+    save.href = "?" + encoded.join("&");
+    save.textContent = "Image link";
+    const pre = document.querySelector("#dataspace pre");
+    const texts = image.map(({ colour, pixels }) => ({ colour, text: transpose(pixels).map((ys, y) => ys.map((v, x) => v ? `(${x},${y})` : "").filter((v) => v).join(" ")).filter((v) => v).join("\n") }));
+    if (texts.length === 1) {
+      pre.textContent = texts[0].text;
+    } else {
+      pre.textContent = texts.map(({ colour, text }) => `${capitalizeFirstLetterOnly(colour)}:
+${text}`).join("\n\n");
+    }
+  }
+  function buildTable(image) {
+    var _a;
+    const count = image[0].pixels.length;
     const table = document.createElement("table");
     table.style.width = "100%";
     table.style.height = "100%";
@@ -70,39 +79,100 @@ new EventSource('/esbuild').addEventListener('change', () => location.reload());
         if (i == 0) {
           td.textContent = `${j}`;
         } else {
-          td.style.backgroundColor = pixels[i - 1][j] ? "black" : "white";
+          td.style.backgroundColor = ((_a = image.find(({ pixels }) => pixels[i - 1][j])) === null || _a === void 0 ? void 0 : _a.colour) || "white";
           td.onclick = () => {
-            pixels[i - 1][j] = !pixels[i - 1][j];
-            td.style.backgroundColor = pixels[i - 1][j] ? "black" : "white";
-            fillData(pixels);
+            var _a2;
+            const index = image.findIndex(({ pixels }) => pixels[i - 1][j]);
+            if (index !== -1) {
+              image[index].pixels[i - 1][j] = false;
+            }
+            if (index + 1 < image.length) {
+              image[index + 1].pixels[i - 1][j] = true;
+            }
+            td.style.backgroundColor = ((_a2 = image[index + 1]) === null || _a2 === void 0 ? void 0 : _a2.colour) || "white";
+            fillData(image);
           };
         }
       }
       table.appendChild(tr2);
     }
-    fillData(pixels);
+    fillData(image);
     return table;
   }
-  async function main() {
+  function htmlToElement(html) {
+    const template = document.createElement("template");
+    html = html.trim();
+    template.innerHTML = html;
+    const child = template.content.firstChild;
+    return child;
+  }
+  function drawColourControls(colours, image) {
+    const colourControls = document.querySelector("#colour_controls");
+    colourControls.innerHTML = "";
+    for (const { colour } of image) {
+      colourControls.appendChild(htmlToElement(`
+            <div class="colour">
+                <label for="${colour}">${capitalizeFirstLetterOnly(colour)} </label><button type="button">Remove</button>
+            </div>
+        `));
+    }
+    colourControls.querySelectorAll("button").forEach((button, idx) => {
+      const colour = image[idx].colour;
+      button.onclick = () => {
+        if (image.length > 1) {
+          const thisColour = colour;
+          const index = image.findIndex(({ colour: colour2 }) => colour2 === thisColour);
+          const value = image[index];
+          image[index] = image[image.length - 1];
+          image.length -= 1;
+          value.pixels.forEach((xs, i) => xs.forEach((v, j) => {
+            if (v) {
+              image[0].pixels[i][j] = true;
+            }
+          }));
+          drawColourControls(colours, image);
+          drawImage(image);
+        }
+      };
+    });
+    const otherColours = colours.filter((x) => image.find(({ colour }) => x === colour) === void 0).map((x) => `<option value="${x}">${capitalizeFirstLetterOnly(x)}</option>`);
+    colourControls.appendChild(htmlToElement(`<select name="colours" id="colours">
+        <option value="" disabled selected style="display:none;">Add new colour</option>
+        ${otherColours}
+        </select>
+    `));
+    const selector = colourControls.querySelector("select");
+    selector.onchange = () => {
+      const colour = selector.value;
+      const size = image[0].pixels.length;
+      image.push({ colour, pixels: Array(size).fill([]).map(() => Array(size).fill(false)) });
+      drawImage(image);
+      drawColourControls(colours, image);
+    };
+  }
+  function drawImage(image) {
     const tablespace = document.querySelector("#tablespace");
-    const button = document.querySelector("#make");
-    let pixels = [];
-    const query = Object.fromEntries(window.location.search.slice(1).split("&").map((x) => [...x.split("="), true].slice(0, 2)));
-    const image = query["black"];
-    if (image) {
-      pixels = decode(base64urlDecode(image));
+    tablespace.innerHTML = "";
+    tablespace.appendChild(buildTable(image));
+  }
+  async function main() {
+    let image = [];
+    const colours = ["black", "red", "blue", "green", "yellow", "orange", "purple", "brown"];
+    const query = window.location.search.slice(1).split("&").map((x) => [...x.split("="), ""].slice(0, 2)).filter(([x]) => x);
+    if (query.length > 0) {
+      image = query.map(([colour, data]) => ({ colour, pixels: decode(base64urlDecode(data)) }));
     } else {
       const size = 10;
-      pixels = Array(size).fill([]).map(() => Array(size).fill(false));
+      image = colours.slice(4).map((colour) => ({ colour, pixels: Array(size).fill([]).map(() => Array(size).fill(false)) }));
     }
-    tablespace.innerHTML = "";
-    tablespace.appendChild(buildTable(pixels));
+    drawColourControls(colours, image);
+    drawImage(image);
+    const button = document.querySelector("#make");
     button.onclick = () => {
       const countinput = document.querySelector("#count");
       const size = parseInt(countinput.value);
-      pixels = Array(size).fill([]).map(() => Array(size).fill(false));
-      tablespace.innerHTML = "";
-      tablespace.appendChild(buildTable(pixels));
+      image = image.map(({ colour }) => ({ colour, pixels: Array(size).fill([]).map(() => Array(size).fill(false)) }));
+      drawImage(image);
     };
   }
   (() => main())();
