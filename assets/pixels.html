@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixels</title>
+    <style>
+        #tablespace {
+            height: 600px;
+            width: 600px;
+            float: left;
+            margin: 10px;
+        }
+        #dataspace {
+            border: 1px solid black;
+            border-radius: 5px;
+            margin: 12px;
+            height: 576px;
+            width: 200px;
+            float: left;
+            padding: 10px;
+        }
+        td {
+            border: 1px solid black;
+            margin: 2px;
+            text-align: center;
+        }
+        pre {
+            white-space: pre-wrap;
+            font-size: large;
+        }
+        table tr:first-child td:first-child {
+            border: none;
+        }
+        @media print {
+            #edit {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="edit">
+        <div>
+            <label for="count">Count:</label><input name="count" id="count">
+            <button type="button" id="make">Create</button>
+        </div>
+        Saved link: <a id="save" href=""></a>
+    </div>
+    <div>
+        <div id="tablespace"></div>
+        <div id="dataspace">
+            <pre></pre>
+        </div>
+    </div>
+    <script src="pixels.js"></script>
+</body>
+</html>
+
+<!--
+
+
+Turtle: http://127.0.0.1:5500/MKDBB378-eMPf_gBAQ==
+Ship:   http://127.0.0.1:5500/IIEFHnj_vecee2iBBA==
+-->
