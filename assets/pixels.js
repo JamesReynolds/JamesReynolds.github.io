@@ -45,7 +45,7 @@ new EventSource('/esbuild').addEventListener('change', () => location.reload());
     pre.textContent = transposed.map((ys, y) => ys.map((v, x) => v ? `(${x},${y})` : "").filter((v) => v).join(" ")).filter((v) => v).join("\n");
     const save = document.querySelector("#save");
     const encoded = encode(pixels);
-    save.href = encoded;
+    save.href = `?black=${encoded}`;
     save.textContent = encoded;
   }
   function buildTable(pixels) {
@@ -87,7 +87,8 @@ new EventSource('/esbuild').addEventListener('change', () => location.reload());
     const tablespace = document.querySelector("#tablespace");
     const button = document.querySelector("#make");
     let pixels = [];
-    const image = window.location.pathname.split("/").slice(-1)[0];
+    const query = Object.fromEntries(window.location.search.slice(1).split("&").map((x) => [...x.split("="), true].slice(0, 2)));
+    const image = query["black"];
     if (image) {
       pixels = decode(base64urlDecode(image));
     } else {
